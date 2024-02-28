@@ -417,6 +417,7 @@ if $enable ; then
         tput sgr0
         echo
         echo "$status_conf_path Directory Exists"
+        status_conf=$status_conf_path/$status_conf_file
         check_if_file_exists
     
 
