@@ -21,7 +21,6 @@ cfg_file="$temp_dir/$plugin.cfg"
 # Enable
 debian_path=/etc/apache2/mods-available
 centos_path=/etc/httpd/conf.d
-status_conf_path=/etc/apache2/mods-available
 status_conf_file=status.conf
 
 
@@ -266,17 +265,21 @@ move_plugin() {
 check_if_dir_exists() {
 
     if [[ -d $debian_path ]] ; then 
-        status_conf_path=$debian_path     
+        status_conf_path=$debian_path   
+        echo "$status_conf_path Directory Exists"
         return 0
     elif [[ -d $centos_path ]] ; then
         status_conf_path=$centos_path
+        echo "$status_conf_path Directory Exists"
         return 0
     else
-        echo "$status_conf_path directory does not exist"
-        exit
-        return 1
+        echo "Either $debian_path nor $centos_path directory does not exists"
+        error_handler 1  
+        return 1 
     fi
 }
+
+
 
 error_handler() {
     if  [ $1 -ne 0 ]; then
@@ -289,9 +292,12 @@ error_handler() {
 }
 check_if_file_exists() {
 
-    
+
+    status_conf=$status_conf_path/$status_conf_file
     if [[ -f $status_conf ]] ; then
+        
         echo "$status_conf_file file exists"
+        
         echo
         tput setaf 3
         echo
@@ -410,18 +416,13 @@ fi
 
 if $enable ; then
 
-    if ( check_if_dir_exists ); then
-        tput setaf 3
-        echo
-        echo "------------Checking if $status_conf_file exists------------"
-        tput sgr0
-        echo
-        echo "$status_conf_path Directory Exists"
-        status_conf=$status_conf_path/$status_conf_file
-        check_if_file_exists
+    tput setaf 3
+    echo
+    echo "------------Checking if $status_conf_file exists------------"
+    tput sgr0
+    echo
+    check_if_dir_exists     
+    check_if_file_exists
     
 
-    else
-        exit
-    fi
 fi
