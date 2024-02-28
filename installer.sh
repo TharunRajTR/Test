@@ -23,7 +23,6 @@ debian_path=/etc/apache2/mods-available
 centos_path=/etc/httpd/conf.d
 status_conf_path=/etc/apache2/mods-available
 status_conf_file=status.conf
-status_conf=$status_conf_path/$status_conf_file
 
 content="\n\t<Location /server-status>\n\t\tSetHandler server-status\n\t</Location>"
 
