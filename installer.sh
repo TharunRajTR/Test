@@ -23,6 +23,12 @@ debian_path=/etc/apache2/mods-available
 centos_path=/etc/httpd/conf.d
 status_conf_file=status.conf
 
+if [[ -f /etc/debian_version ]] ; then
+    status_conf_path=$debian_path
+elif [[ -f /etc/redhat-release ]] ; then
+    status_conf_path=$centos_path
+fi
+
 
 content="\n\t<Location /server-status>\n\t\tSetHandler server-status\n\t</Location>"
 
@@ -264,12 +270,7 @@ move_plugin() {
 
 check_if_dir_exists() {
 
-    if [[ -d $debian_path ]] ; then 
-        status_conf_path=$debian_path   
-        echo "$status_conf_path Directory Exists"
-        return 0
-    elif [[ -d $centos_path ]] ; then
-        status_conf_path=$centos_path
+    if [[ -d $status_conf_path ]] ; then  
         echo "$status_conf_path Directory Exists"
         return 0
     else
@@ -440,14 +441,35 @@ if $install ; then
 fi
 
 if $enable ; then
-
     tput setaf 3
+    echo "------------Enabling Mod Status------------" 
     echo
-    echo "------------Checking if $status_conf_file exists------------"
     tput sgr0
+
+    echo "The installer will check if there is status.conf file in $staus_conf_path directory."
+    echo "If the file does not exist, it will create the file and add the content to enable mod_status."
+    echo "If the file exists, it will check if the mod_status is already enabled."
+    echo "If the mod_status is not enabled, it will add the content to enable mod_status."
     echo
-    check_if_dir_exists     
-    check_if_file_exists
+    echo "Content to be added in $status_conf_file file"
+    echo -e $content
+    read -p "Do you wish to continue??(y or n):" continue
+
+    if [ $continue = "n" -o $continue = "N" ] ; then
+        echo "bye"
+        exit
+    elif [ $continue = "y" -o $continue = "Y" ] ; then
+        tput setaf 3
+        echo
+        echo "------------Checking if $status_conf_file exists------------"
+        tput sgr0
+        echo
+        check_if_dir_exists     
+        check_if_file_exists
+    else 
+        echo "Invalid Input"
+        exit
+    fi
     
 
 fi
