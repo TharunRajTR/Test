@@ -313,6 +313,7 @@ check_if_file_exists() {
         output=$(touch $status_conf)
         error_handler $? $output
         echo -e $content >> $status_conf
+        restart_apache
         return 1
     fi
 
@@ -339,8 +340,9 @@ enabled_or_not() {
         error_handler $? $output
         echo
         echo "Adding Content..."
-        echo "Done"
         add_content 
+        echo "Done"
+        restart_apache
     fi
 
 }
@@ -382,6 +384,28 @@ add_content() {
 
 }
 
+restart_apache(){
+
+     read -p "Do you wish to restart apache webserver??(y or n):" restart
+        if [ $restart = "y" -o $restart = "Y" ] ; then
+            echo "Restarting Apache Webserver..."
+            if [[ -f /etc/debian_version ]] ; then
+                output=$(systemctl restart apache2)
+                error_handler $? $output
+                echo "Done"
+            elif [[ -f /etc/redhat-release ]] ; then
+                output=$(systemctl restart httpd)
+                error_handler $? $output
+                echo "Done"
+            fi
+            
+        elif [ $restart = "n" -o $restart = "N" ] ; then
+            echo "Bye"
+            exit
+        fi
+
+
+}
 
 if $install ; then
 
