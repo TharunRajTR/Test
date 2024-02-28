@@ -400,6 +400,7 @@ restart_apache(){
             fi
             
         elif [ $restart = "n" -o $restart = "N" ] ; then
+            echo "The changes will only be reflected after restarting or reloading the apache webserver"
             echo "Bye"
             exit
         fi
