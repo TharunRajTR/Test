@@ -24,6 +24,7 @@ centos_path=/etc/httpd/conf.d
 status_conf_path=/etc/apache2/mods-available
 status_conf_file=status.conf
 
+
 content="\n\t<Location /server-status>\n\t\tSetHandler server-status\n\t</Location>"
 
 #trap Function To reset terminal colours 
@@ -306,7 +307,7 @@ check_if_file_exists() {
         output=$(touch $status_conf)
         error_handler $? $output
         echo -e $content >> $status_conf
-        return 1check_if_file_exists
+        return 1
     fi
 
 
