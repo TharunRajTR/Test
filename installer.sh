@@ -1,9 +1,10 @@
 #!/bin/bash
 
+#v-beta_testing
+
 # Define argument names
 ARG1_NAME="--install"
 ARG2_NAME="--enable"
-ARG3_NAME="--add_instance"
 install=false
 enable=false
 add_instance=false
@@ -32,6 +33,7 @@ fi
 
 content="\n\t<Location /server-status>\n\t\tSetHandler server-status\n\t</Location>"
 
+
 #trap Function To reset terminal colours 
 
 func_exit() {
@@ -42,33 +44,6 @@ func_exit() {
 #Trap for ctr+c(SIGINT) and ctrl+z(SIGTSTP)
 
 trap func_exit SIGINT SIGTSTP
-
-# Start processing command line arguments
-while [[ $# -gt  0 ]]; do
-    key="$1"
-
-    case "$key" in
-        $ARG1_NAME)
-            install=true
-            shift # past argument
-            shift # past value
-            ;;
-        $ARG2_NAME)
-            enable=true
-            shift # past argument
-            shift # past value
-            ;;
-        $ARG3_NAME)
-            add_instance=true
-            shift # past argument
-            shift # past value
-            ;;
-        *)
-            echo "Unknown option: $key"
-            exit   1
-            ;;
-        esac
-done
 
 download_files() {
 
@@ -136,8 +111,25 @@ get_plugin_data() {
     echo "------------Connection Details------------"
     echo 
 
+    echo "The Default url with the endpoint found is: http://localhost:80$endpoint?auto"
+    read -p "Do you wish to change the url?? (y or n):" change_url
+    echo
+    
+    if [ $change_url = "n" -o $change_url = "N" ] ; then
+        url="http://localhost:80$endpoint?auto"
+    elif [ $change_url = "y" -o $change_url = "Y" ] ; then
+        tput setaf 4
+        read -p "  Enter the URL: " url
+    else
+        tput setaf 4
+        read -p "  Enter the URL: " url
+    fi
+
     tput setaf 4
-    read -p "  Enter the URL: " url
+    echo
+    echo "  Hit enter if you dont have any credentials set for the endpoint"
+    echo
+
     read -p "  Enter the User Name: " username
     read -sp "  Enter the Password: " password
     echo
@@ -205,6 +197,7 @@ check_plugin_execution() {
         tput sgr0
         exit
     fi
+
     if grep -qE '"status": 0' <<< "$output"  ; then
         tput setaf 1
         echo "------------Error Occured------------"
@@ -215,6 +208,13 @@ check_plugin_execution() {
         echo $(grep -E '"msg": *' <<< "$output" )
         tput sgr0
         exit
+
+    elif ! echo "$output" | grep -qE "\"busy_workers\":|\"idle_workers\":"; then
+        tput setaf 3
+        echo "The Metrics is not present in the output.Please check if the entered url has the status module endpoint."
+        echo "The url example: http://localhost:80$endpoint?auto"
+        error_handler 1 "$output"
+
     else
         tput setaf 3
         echo "------------Successfull Test Execution------------"
@@ -315,6 +315,7 @@ check_if_file_exists() {
         error_handler $? $output
         echo -e $content >> $status_conf
         restart_apache
+        endpoint="/server-status"
         return 1
     fi
 
@@ -323,27 +324,53 @@ check_if_file_exists() {
 
 enabled_or_not() {
 
-     if grep -qE "^[^#]*\<SetHandler server-status\>"   $status_conf ; then
+    output=$(grep -E "^[^#]*\<SetHandler server-status\>"  $status_conf )
+    exit_status=$?
+    if [ $exit_status != 1 ] ; then
+        error_handler $exit_status $output
+    fi
+
+
+    if [ -n "$output" ] ; then
         echo "status mod already enabled"
         get_endpoint
-        exit
-     else
-
+        
+    else
         echo "Mod Status Not enabled"
         echo
         tput setaf 3
-        echo
-        echo "------------Enabling Mod Status------------"
+        echo "------------Enabling Mod Status------------" 
         echo
         tput sgr0
-        echo "Taking Backup of $status_conf_file file"
-        output=$(cp $status_conf $status_conf_path/$status_conf_file.bak.$(date +%Y_%m_%d_%H_%M_%S))
-        error_handler $? $output
+
+        echo "The installer will check if there is status.conf file in $staus_conf_path directory."
+        echo "If the file does not exist, it will create the file and add the content to enable mod_status."
+        echo "If the file exists, it will check if the mod_status is already enabled."
+        echo "If the mod_status is not enabled, it will add the content to enable mod_status."
         echo
-        echo "Adding Content..."
-        add_content 
-        echo "Done"
-        restart_apache
+        echo "Content to be added in $status_conf_file file"
+        echo -e $content
+        echo
+        read -p "Do you wish to continue??(y or n):" continue
+
+        if [ $continue = "n" -o $continue = "N" ] ; then
+            echo "bye"
+            exit
+        elif [ $continue = "y" -o $continue = "Y" ] ; then
+            echo "Taking Backup of $status_conf_file file"
+            output=$(cp $status_conf $status_conf_path/$status_conf_file.bak.$(date +%Y_%m_%d_%H_%M_%S))
+            error_handler $? $output
+            echo
+            echo "Adding Content..."
+            add_content 
+            echo "Done"
+            restart_apache
+
+        else 
+            echo "Invalid Input"
+            exit
+        fi
+
     fi
 
 }
@@ -358,17 +385,12 @@ get_endpoint(){
     text=$(sed -n $l_no"p" $status_conf)
     
     if echo $text | grep -qE "^[^#]*\<Location\>" ; then
-        endpoint=$(echo $text | grep  "^[^#]*\<Location\>" | sed -n 's/^.*<Location \([^>]*\)>.*/\1/p')
-        echo "The enpoint of Mod Status: $endpoint"
-        echo 
-        echo "If you want to monitor localhost on port 80 with HTTP, use the following endpoint"
-        echo "http://localhost:80$endpoint?auto"
-        echo
-        echo "And for HTTPS use the following endpoint"
-        echo "https://localhost:80$endpoint?auto"
-        echo
-        echo "Change the endpoint in the plugin configuration, if the host and port are differ according to your server."
-        exit
+        endpoint=$(echo $text | grep  "^[^#]*\<Location\>" | sed -n 's/^.*<Location \([^>]*\)>.*/\1/p') 
+        echo "The endpoint of Mod Status: $endpoint"
+        echo "Proceding to install the plugin"
+        break
+        
+        
     else
         l_no=$(( $l_no-1 ))
     fi
@@ -387,6 +409,7 @@ add_content() {
 
 restart_apache(){
 
+     echo "The changes will only be reflected after restarting or reloading the apache webserver"
      read -p "Do you wish to restart apache webserver??(y or n):" restart
         if [ $restart = "y" -o $restart = "Y" ] ; then
             echo "Restarting Apache Webserver..."
@@ -401,15 +424,15 @@ restart_apache(){
             fi
             
         elif [ $restart = "n" -o $restart = "N" ] ; then
-            echo "The changes will only be reflected after restarting or reloading the apache webserver"
-            echo "Bye"
-            exit
+            echo "Done"
+            
         fi
 
 
 }
 
-if $install ; then
+
+install_plugin() {
 
     check_plugin_exists
     tput setaf 3
@@ -438,38 +461,17 @@ if $install ; then
     tput sgr0
 
     move_plugin
-fi
+}
 
-if $enable ; then
-    tput setaf 3
-    echo "------------Enabling Mod Status------------" 
-    echo
-    tput sgr0
 
-    echo "The installer will check if there is status.conf file in $staus_conf_path directory."
-    echo "If the file does not exist, it will create the file and add the content to enable mod_status."
-    echo "If the file exists, it will check if the mod_status is already enabled."
-    echo "If the mod_status is not enabled, it will add the content to enable mod_status."
-    echo
-    echo "Content to be added in $status_conf_file file"
-    echo -e $content
-    read -p "Do you wish to continue??(y or n):" continue
+tput setaf 3
+echo
+echo "------------Checking if $status_conf_file exists------------"
+tput sgr0
 
-    if [ $continue = "n" -o $continue = "N" ] ; then
-        echo "bye"
-        exit
-    elif [ $continue = "y" -o $continue = "Y" ] ; then
-        tput setaf 3
-        echo
-        echo "------------Checking if $status_conf_file exists------------"
-        tput sgr0
-        echo
-        check_if_dir_exists     
-        check_if_file_exists
-    else 
-        echo "Invalid Input"
-        exit
-    fi
-    
 
-fi
+echo
+check_if_dir_exists     
+check_if_file_exists
+
+install_plugin
