@@ -311,10 +311,10 @@ check_if_file_exists() {
     else
 
         read -p "$status_conf_file file does not exist. Do you wish to Create File and enable mod_status??(y or n):" create_file
-        if $create_file = "n" -o $create_file = "N" ; then
+        if [ $create_file = "n" -o $create_file = "N" ]; then
             echo "Bye"
-            exit
-        elif create_file = "y" -o create_file = "Y" ; then
+            echo "Proceding to plugin installation"
+        elif [ $create_file = "y" -o create_file = "Y" ] ; then
             echo "Creating $status_conf_file file"
             output=$(touch $status_conf)
             error_handler $? $output
