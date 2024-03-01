@@ -30,7 +30,7 @@ elif [[ -f /etc/redhat-release ]] ; then
     status_conf_path=$centos_path
 fi
 
-
+endpoint="/server-status"
 content="\n\t<Location /server-status>\n\t\tSetHandler server-status\n\t</Location>"
 
 
@@ -309,14 +309,22 @@ check_if_file_exists() {
         
         return 0
     else
-        echo "$status_conf_file file does not exist. Creating File"
-        echo "Adding Content to enable mod_status"
-        output=$(touch $status_conf)
-        error_handler $? $output
-        echo -e $content >> $status_conf
-        restart_apache
-        endpoint="/server-status"
-        return 1
+
+        read -p "$status_conf_file file does not exist. Do you wish to Create File and enable mod_status??(y or n):" create_file
+        if $create_file = "n" -o $create_file = "N" ; then
+            echo "Bye"
+            exit
+        elif create_file = "y" -o create_file = "Y" ; then
+            echo "Creating $status_conf_file file"
+            output=$(touch $status_conf)
+            error_handler $? $output
+            echo
+            echo "Adding Content to enable mod_status"
+            output=$(echo -e $content >> $status_conf)
+            error_handler $? $output
+            restart_apache
+            return 1
+        fi
     fi
 
 
